@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/_authenticated/data-barang")({
+  ssr: false,
   head: () => ({ meta: [{ title: "Data Barang — Inventaris" }] }),
   component: ItemsPage,
 });

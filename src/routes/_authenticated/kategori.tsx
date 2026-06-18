@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/_authenticated/kategori")({
+  ssr: false,
   head: () => ({ meta: [{ title: "Kategori — Inventaris" }] }),
   component: CategoriesPage,
 });

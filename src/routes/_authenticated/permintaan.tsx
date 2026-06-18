@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select";
 
 export const Route = createFileRoute("/_authenticated/permintaan")({
+  ssr: false,
   head: () => ({ meta: [{ title: "Permintaan Barang — Inventaris" }] }),
   component: RequestsPage,
 });

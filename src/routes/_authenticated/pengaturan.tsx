@@ -16,6 +16,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useAppSettings, type AppSettings, defaultSettings, writeAuditLog } from "@/hooks/use-app-settings";
 
 export const Route = createFileRoute("/_authenticated/pengaturan")({
+  ssr: false,
   head: () => ({ meta: [{ title: "Pengaturan — Inventaris" }] }),
   component: SettingsPage,
 });

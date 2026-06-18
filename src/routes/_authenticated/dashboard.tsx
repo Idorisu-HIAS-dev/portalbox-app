@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
+  ssr: false,
   head: () => ({ meta: [{ title: "Dashboard — Inventaris" }] }),
   component: Dashboard,
 });

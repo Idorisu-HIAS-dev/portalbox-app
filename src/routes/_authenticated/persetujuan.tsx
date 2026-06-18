@@ -18,6 +18,7 @@ import {
 import { StatusBadge } from "./permintaan";
 
 export const Route = createFileRoute("/_authenticated/persetujuan")({
+  ssr: false,
   head: () => ({ meta: [{ title: "Persetujuan — Inventaris" }] }),
   component: ApprovalsPage,
 });

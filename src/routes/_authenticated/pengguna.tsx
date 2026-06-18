@@ -14,6 +14,7 @@ import {
 import { DataTable } from "@/components/data-table";
 
 export const Route = createFileRoute("/_authenticated/pengguna")({
+  ssr: false,
   head: () => ({ meta: [{ title: "Pengguna — Inventaris" }] }),
   component: UsersPage,
 });

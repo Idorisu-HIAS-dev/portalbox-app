@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
 export const Route = createFileRoute("/_authenticated/notifikasi")({
+  ssr: false,
   head: () => ({ meta: [{ title: "Notifikasi — Inventaris" }] }),
   component: NotifPage,
 });

@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/chat")({
+  ssr: false,
   head: () => ({ meta: [{ title: "Chat — Inventaris" }] }),
   component: ChatPage,
 });

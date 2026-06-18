@@ -11,6 +11,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { DataTable } from "@/components/data-table";
 
 export const Route = createFileRoute("/_authenticated/laporan")({
+  ssr: false,
   head: () => ({ meta: [{ title: "Laporan — Inventaris" }] }),
   component: ReportsPage,
 });
