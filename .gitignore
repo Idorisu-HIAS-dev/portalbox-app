@@ -15,6 +15,10 @@ dist-ssr
 .tanstack/**
 .nitro
 *.local
+.inventoport-main/
+inventoport-main/
+.vercel/
+.vercel
 
 # Environment
 .env
