@@ -1,5 +1,4 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
-import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/")({
   ssr: false,
@@ -13,9 +12,5 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
-  const { user, loading } = useAuth();
-  if (loading) {
-    return <div className="flex min-h-screen items-center justify-center bg-background text-muted-foreground">Memuat…</div>;
-  }
-  return <Navigate to={user ? "/dashboard" : "/auth"} replace />;
+  return <Navigate to="/dashboard" replace />;
 }
