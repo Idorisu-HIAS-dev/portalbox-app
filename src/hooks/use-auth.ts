@@ -21,40 +21,7 @@ export function useAuth(): AuthState {
 
   useEffect(() => {
     let mounted = true;
-
-    const { data: sub } = supabase.auth.onAuthStateChange(async (event, s) => {
-      if (!mounted) return;
-      setSession(s);
-      setUser(s?.user ?? null);
-      if (s?.user) {
-        await loadExtras(s.user.id);
-      } else {
-        setRole(null);
-        setProfile(null);
-      }
-      setLoading(false);
-    });
-
-    supabase.auth.getSession().then(async ({ data, error }) => {
-      if (!mounted) return;
-      if (error) {
-        console.error("[useAuth] getSession error:", error.message);
-      }
-      setSession(data.session);
-      setUser(data.session?.user ?? null);
-      if (data.session?.user) {
-        await loadExtras(data.session.user.id);
-      }
-      setLoading(false);
-    }).catch((err) => {
-      console.error("[useAuth] getSession catch:", err);
-      if (mounted) setLoading(false);
-    });
-
-    // Safety: always stop loading after 3 seconds
-    const timeout = setTimeout(() => {
-      if (mounted) setLoading(false);
-    }, 3000);
+    let sessionChecked = false;
 
     async function loadExtras(uid: string) {
       try {
@@ -69,6 +36,47 @@ export function useAuth(): AuthState {
         console.error("[useAuth] loadExtras error:", err);
       }
     }
+
+    function applySession(s: Session | null) {
+      setSession(s);
+      setUser(s?.user ?? null);
+      if (s?.user) {
+        loadExtras(s.user.id);
+      } else {
+        setRole(null);
+        setProfile(null);
+      }
+    }
+
+    supabase.auth.getSession().then(async ({ data, error }) => {
+      if (!mounted) return;
+      if (error) {
+        console.error("[useAuth] getSession error:", error.message);
+      }
+      applySession(data.session);
+      sessionChecked = true;
+      setLoading(false);
+    }).catch((err) => {
+      console.error("[useAuth] getSession catch:", err);
+      if (mounted) {
+        sessionChecked = true;
+        setLoading(false);
+      }
+    });
+
+    const { data: sub } = supabase.auth.onAuthStateChange(async (event, s) => {
+      if (!mounted) return;
+      if (!sessionChecked) return;
+      applySession(s);
+      setLoading(false);
+    });
+
+    const timeout = setTimeout(() => {
+      if (mounted && !sessionChecked) {
+        sessionChecked = true;
+        setLoading(false);
+      }
+    }, 5000);
 
     return () => {
       mounted = false;
