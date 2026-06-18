@@ -94,7 +94,7 @@ function TopBar({ profile, role }: { profile: { full_name: string | null } | nul
 
   async function signOut() {
     await supabase.auth.signOut();
-    window.location.href = "http://localhost:8080/auth";
+    window.location.href = `${window.location.origin}/auth`;
   }
 
   return (
