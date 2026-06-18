@@ -17,7 +17,6 @@ import { Toaster } from "@/components/ui/sonner";
 import { useAppSettings, useAutoLogout } from "@/hooks/use-app-settings";
 
 export const Route = createFileRoute("/_authenticated")({
-  ssr: false,
   component: AuthLayout,
 });
 
