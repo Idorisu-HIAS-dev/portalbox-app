@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
-import { supabase } from "@/integrations/supabase/client";
+import { db, genId, now } from "@/lib/mock-db";
 import { useAuth } from "@/hooks/use-auth";
 import { useAppSettings, writeAuditLog } from "@/hooks/use-app-settings";
 import { Button } from "@/components/ui/button";
@@ -28,15 +28,6 @@ export const Route = createFileRoute("/_authenticated/kategori")({
 
 type Cat = { id: string; name: string; description: string | null };
 
-const MOCK_CATEGORIES: Cat[] = [
-  { id: "1", name: "Elektronik", description: "Peralatan elektronik kantor" },
-  { id: "2", name: "Furniture", description: "Meja, kursi, lemari, dll" },
-  { id: "3", name: "Alat Tulis", description: "Pensil, pulpen, kertas, dll" },
-  { id: "4", name: "ATK Khusus", description: "Peralatan presentasi & rapat" },
-  { id: "5", name: "Komputer & Aksesoris", description: "PC, laptop, printer, dll" },
-  { id: "6", name: "Kebersihan", description: "Peralatan kebersihan kantor" },
-];
-
 function CategoriesPage() {
   const { role } = useAuth();
   const isAdmin = role === "admin";
@@ -48,18 +39,18 @@ function CategoriesPage() {
 
   const { data: cats = [] } = useQuery({
     queryKey: ["categories"],
-    queryFn: async () => MOCK_CATEGORIES as Cat[],
+    queryFn: async () => db.categories.getAll() as Cat[],
   });
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
     if (!form.name.trim()) return toast.error("Nama wajib");
     const payload = { name: form.name.trim(), description: form.description.trim() || null };
-    const op = editing
-      ? supabase.from("categories").update(payload).eq("id", editing.id)
-      : supabase.from("categories").insert(payload);
-    const { error } = await op;
-    if (error) return toast.error(error.message);
+    if (editing) {
+      db.categories.update(editing.id, payload);
+    } else {
+      db.categories.insert({ id: genId(), ...payload, created_at: now() } as any);
+    }
     toast.success(editing ? "Kategori diperbarui" : "Kategori ditambahkan");
     setOpen(false); setEditing(null); setForm({ name: "", description: "" });
     qc.invalidateQueries({ queryKey: ["categories"] });
@@ -67,8 +58,7 @@ function CategoriesPage() {
 
   const delMut = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("categories").delete().eq("id", id);
-      if (error) throw error;
+      db.categories.remove(id);
     },
     onSuccess: () => { toast.success("Kategori dihapus"); qc.invalidateQueries({ queryKey: ["categories"] }); setDelId(null); },
     onError: (e: any) => toast.error(e.message),

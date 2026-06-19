@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bell, Check, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
-import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/lib/mock-db";
 import { useAppSettings, formatDateTime } from "@/hooks/use-app-settings";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -15,37 +15,30 @@ export const Route = createFileRoute("/_authenticated/notifikasi")({
   component: NotifPage,
 });
 
-const MOCK_NOTIFICATIONS = [
-  { id: "1", title: "Stok Menipis", message: "Pembersih Lantai (galon) tersisa 3 unit, di bawah batas minimum.", type: "warning", read: false, created_at: "2026-06-18T08:30:00" },
-  { id: "2", title: "Permintaan Baru", message: "Admin Utama mengajukan permintaan 10 pcs ATK umum.", type: "info", read: false, created_at: "2026-06-17T14:20:00" },
-  { id: "3", title: "Barang Masuk", message: "3 unit Headset Jabra Evolve2 telah dicatat masuk dari PT Maju Jaya.", type: "success", read: true, created_at: "2026-06-15T10:00:00" },
-  { id: "4", title: "Persetujuan Ditolak", message: "Permintaan Headset Jabra Evolve2 telah ditolak oleh admin.", type: "error", read: true, created_at: "2026-06-13T09:15:00" },
-  { id: "5", title: "Barang Keluar", message: "8 set Spidol Whiteboard dicatat keluar ke Ruang Meeting.", type: "info", read: true, created_at: "2026-05-15T16:00:00" },
-];
-
 function NotifPage() {
   const qc = useQueryClient();
   const { settings } = useAppSettings();
   const { data: notifs = [] } = useQuery({
     queryKey: ["notifications"],
-    queryFn: async () => MOCK_NOTIFICATIONS as any[],
+    queryFn: async () => db.notifications.getAll() as any[],
   });
 
   async function markAllRead() {
     const ids = notifs.filter((n: any) => !n.read).map((n: any) => n.id);
     if (!ids.length) return;
-    const { error } = await supabase.from("notifications").update({ read: true }).in("id", ids);
-    if (error) return toast.error(error.message);
+    for (const id of ids) {
+      db.notifications.update(id, { read: true });
+    }
     qc.invalidateQueries({ queryKey: ["notifications"] });
   }
 
   async function markRead(id: string) {
-    await supabase.from("notifications").update({ read: true }).eq("id", id);
+    db.notifications.update(id, { read: true });
     qc.invalidateQueries({ queryKey: ["notifications"] });
   }
 
   async function remove(id: string) {
-    await supabase.from("notifications").delete().eq("id", id);
+    db.notifications.remove(id);
     qc.invalidateQueries({ queryKey: ["notifications"] });
   }
 

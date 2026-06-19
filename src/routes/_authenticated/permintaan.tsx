@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Plus, Eye, Send } from "lucide-react";
 import { toast } from "sonner";
 
-import { supabase } from "@/integrations/supabase/client";
+import { db, genId, now } from "@/lib/mock-db";
 import { useAuth } from "@/hooks/use-auth";
 import { useAppSettings, formatDate, writeAuditLog } from "@/hooks/use-app-settings";
 import { Button } from "@/components/ui/button";
@@ -35,29 +35,6 @@ const KATEGORI_OPSI = [
 const EKSPEDISI_OPSI = [
   "J&T Express", "JNE Express", "Shopee Express (SPX)", "SiCepat Ekspres", "AnterAja",
   "Pos Indonesia", "TIKI", "Ninja Xpress", "Lion Parcel", "Wahana Express", "SAP Express", "Lainnya",
-];
-
-const MOCK_REQUESTS = [
-  { id: "1", item_id: "1", qty: 2, requester_id: "admin", note: "Butuh laptop untuk tim baru", status: "menunggu" as const, kategori: "Elektronik", merek: "ASUS", ekspedisi: "JNE", created_at: "2026-06-10", items: { name: "Laptop ASUS Vivobook 14", unit: "unit" }, requester: { full_name: "Admin Utama" }, approval_note: null, kategori_lain: null, ekspedisi_lain: null },
-  { id: "2", item_id: "5", qty: 3, requester_id: "admin", note: "Meja untuk ruang baru", status: "disetujui" as const, kategori: "Furniture", merek: "Olympic", ekspedisi: "J&T", created_at: "2026-06-11", items: { name: "Meja Kerja Lipat", unit: "unit" }, requester: { full_name: "Admin Utama" }, approval_note: null, kategori_lain: null, ekspedisi_lain: null },
-  { id: "3", item_id: "8", qty: 5, requester_id: "admin", note: "Kertas untuk cetak laporan", status: "disetujui" as const, kategori: "Alat Tulis", merek: "Sinar Dunia", ekspedisi: "SiCepat", created_at: "2026-06-12", items: { name: "Kertas A4 70g", unit: "rim" }, requester: { full_name: "Admin Utama" }, approval_note: null, kategori_lain: null, ekspedisi_lain: null },
-  { id: "4", item_id: "11", qty: 1, requester_id: "admin", note: "Headset untuk wfh", status: "ditolak" as const, kategori: "Elektronik", merek: "Jabra", ekspedisi: "Grab", created_at: "2026-06-13", items: { name: "Headset Jabra Evolve2", unit: "unit" }, requester: { full_name: "Admin Utama" }, approval_note: null, kategori_lain: null, ekspedisi_lain: null },
-  { id: "5", item_id: null, qty: 10, requester_id: "admin", note: "Permintaan ATK umum", status: "menunggu" as const, kategori: "Alat Tulis", merek: null, ekspedisi: "GoSend", created_at: "2026-06-15", items: null, requester: { full_name: "Admin Utama" }, approval_note: null, kategori_lain: null, ekspedisi_lain: null },
-];
-
-const MOCK_ITEMS_MIN = [
-  { id: "1", name: "Laptop ASUS Vivobook 14", stock: 12, unit: "unit" },
-  { id: "2", name: "Monitor LG 24 inch", stock: 8, unit: "unit" },
-  { id: "3", name: "Keyboard Mechanical Logitech", stock: 15, unit: "pcs" },
-  { id: "4", name: "Mouse Logitech G102", stock: 20, unit: "pcs" },
-  { id: "5", name: "Meja Kerja Lipat", stock: 6, unit: "unit" },
-  { id: "6", name: "Kursi Ergonomis", stock: 10, unit: "unit" },
-  { id: "7", name: "Pulpen Pilot G2", stock: 50, unit: "pcs" },
-  { id: "8", name: "Kertas A4 70g (rim)", stock: 25, unit: "rim" },
-  { id: "9", name: "Whiteboard 120x90cm", stock: 4, unit: "unit" },
-  { id: "10", name: "Spidol Whiteboard (set)", stock: 18, unit: "set" },
-  { id: "11", name: "Headset Jabra Evolve2", stock: 7, unit: "unit" },
-  { id: "12", name: "Pembersih Lantai (galon)", stock: 3, unit: "galon" },
 ];
 
 type Req = {
@@ -96,12 +73,20 @@ function RequestsPage() {
 
   const { data: reqs = [] } = useQuery({
     queryKey: ["requests"],
-    queryFn: async () => MOCK_REQUESTS as Req[],
+    queryFn: async () => {
+      const allReqs = db.requests.getAll();
+      const itemsList = db.items.getAll();
+      return allReqs.map((r) => ({
+        ...r,
+        items: r.item_id ? itemsList.find((i) => i.id === r.item_id) ?? null : null,
+        requester: { full_name: "Admin Utama" },
+      })) as Req[];
+    },
   });
 
   const { data: items = [] } = useQuery({
     queryKey: ["items-min"],
-    queryFn: async () => MOCK_ITEMS_MIN as any[],
+    queryFn: async () => db.items.getAll() as any[],
   });
 
   function validateForm() {
@@ -124,30 +109,33 @@ function RequestsPage() {
     if (err) return toast.error(err);
 
     const message = buildMessage(form);
-    const { error } = await supabase.from("requests").insert({
+    const newReq: any = {
+      id: genId(),
       item_id: form.item_id || null,
       qty: form.qty,
       note: message,
       requester_id: user!.id,
+      status: "menunggu",
       kategori: form.kategori,
       kategori_lain: form.kategori === "Lain-lain" ? form.kategori_lain.trim() : null,
       merek: form.merek.trim() || null,
       ekspedisi: form.ekspedisi,
       ekspedisi_lain: form.ekspedisi === "Lainnya" ? form.ekspedisi_lain.trim() : null,
-    } as any);
-    if (error) return toast.error(error.message);
+      approver_id: null,
+      approval_note: null,
+      approved_at: null,
+      created_at: now(),
+    };
+    db.requests.insert(newReq);
 
-    // Kirim pesan ke Chat Admin
-    const { data: admins } = await supabase.from("user_roles").select("user_id").eq("role", "admin");
-    if (admins && admins.length > 0) {
-      for (const admin of admins) {
-        await supabase.from("chat_messages").insert({
-          sender_id: user!.id,
-          recipient_id: admin.user_id,
-          content: message,
-        });
-      }
-    }
+    db.chat_messages.insert({
+      id: genId(),
+      sender_id: user!.id,
+      recipient_id: "admin",
+      content: message,
+      read: false,
+      created_at: now(),
+    });
 
     await writeAuditLog(user!.id, "permintaan_dibuat", `Permintaan: ${form.merek} kategori ${form.kategori} x${form.qty} diajukan`, settings.auditLog);
     toast.success("Permintaan dikirim ke Admin via Chat.");

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Check, X, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
-import { supabase } from "@/integrations/supabase/client";
+import { db, genId, now } from "@/lib/mock-db";
 import { useAuth } from "@/hooks/use-auth";
 import { useAppSettings, formatDate, writeAuditLog } from "@/hooks/use-app-settings";
 import { Button } from "@/components/ui/button";
@@ -23,22 +23,6 @@ export const Route = createFileRoute("/_authenticated/persetujuan")({
   component: ApprovalsPage,
 });
 
-const MOCK_REQUESTS = [
-  { id: "1", item_id: "1", qty: 2, requester_id: "admin", note: "Butuh laptop untuk tim baru", status: "menunggu" as const, kategori: "Elektronik", merek: "ASUS", ekspedisi: "JNE", created_at: "2026-06-10", items: { name: "Laptop ASUS Vivobook 14", unit: "unit", stock: 12 }, requester: { full_name: "Admin Utama" }, approval_note: null },
-  { id: "2", item_id: "5", qty: 3, requester_id: "admin", note: "Meja untuk ruang baru", status: "disetujui" as const, kategori: "Furniture", merek: "Olympic", ekspedisi: "J&T", created_at: "2026-06-11", items: { name: "Meja Kerja Lipat", unit: "unit", stock: 6 }, requester: { full_name: "Admin Utama" }, approval_note: null },
-  { id: "3", item_id: "8", qty: 5, requester_id: "admin", note: "Kertas untuk cetak laporan", status: "disetujui" as const, kategori: "Alat Tulis", merek: "Sinar Dunia", ekspedisi: "SiCepat", created_at: "2026-06-12", items: { name: "Kertas A4 70g", unit: "rim", stock: 25 }, requester: { full_name: "Admin Utama" }, approval_note: null },
-  { id: "4", item_id: "11", qty: 1, requester_id: "admin", note: "Headset untuk wfh", status: "ditolak" as const, kategori: "Elektronik", merek: "Jabra", ekspedisi: "Grab", created_at: "2026-06-13", items: { name: "Headset Jabra Evolve2", unit: "unit", stock: 7 }, requester: { full_name: "Admin Utama" }, approval_note: null },
-  { id: "5", item_id: null, qty: 10, requester_id: "admin", note: "Permintaan ATK umum", status: "menunggu" as const, kategori: "Alat Tulis", merek: null, ekspedisi: "GoSend", created_at: "2026-06-15", items: null, requester: { full_name: "Admin Utama" }, approval_note: null },
-];
-
-type Req = {
-  id: string; item_id: string | null; qty: number; status: "menunggu" | "disetujui" | "ditolak";
-  note: string | null; created_at: string; approval_note: string | null;
-  kategori: string | null; merek: string | null; ekspedisi: string | null;
-  items?: { name: string; unit: string; stock: number } | null;
-  requester?: { full_name: string | null } | null;
-};
-
 function ApprovalsPage() {
   const { role, user } = useAuth();
   const isAdmin = role === "admin";
@@ -49,31 +33,39 @@ function ApprovalsPage() {
 
   const { data: reqs = [] } = useQuery({
     queryKey: ["requests-all"],
-    queryFn: async () => MOCK_REQUESTS as Req[],
+    queryFn: async () => {
+      const allReqs = db.requests.getAll();
+      const itemsList = db.items.getAll();
+      return allReqs.map((r) => ({
+        ...r,
+        items: r.item_id ? itemsList.find((i) => i.id === r.item_id) ?? null : null,
+        requester: { full_name: "Admin Utama" },
+      })) as Req[];
+    },
   });
 
   async function submitDecision() {
     if (!decide) return;
     const { req, status } = decide;
-    // If approved and has item, create stock_out automatically
     if (status === "disetujui" && req.item_id) {
-      // Validate stock availability first
       if (req.items && req.qty > req.items.stock) {
         toast.error(`Stok tidak cukup. Stok tersedia: ${req.items.stock} ${req.items.unit}`);
         return;
       }
-      const { error: outErr } = await supabase.from("stock_out").insert({
+      db.stock_out.insert({
+        id: genId(),
         item_id: req.item_id, qty: req.qty, destination: req.requester?.full_name ?? "Pemohon",
-        note: `Permintaan #${req.id.slice(0, 8)}`, created_by: user?.id,
+        note: `Permintaan #${req.id.slice(0, 8)}`,
+        trx_date: new Date().toISOString().slice(0, 10),
+        created_at: now(),
       });
-      if (outErr) { toast.error(outErr.message); return; }
+      const item = db.items.getAll().find((i) => i.id === req.item_id);
+      if (item) db.items.update(req.item_id, { stock: Math.max(0, item.stock - req.qty) });
     }
-    const { error } = await supabase.from("requests").update({
-      status, approver_id: user?.id, approval_note: approvalNote || null, approved_at: new Date().toISOString(),
-    }).eq("id", req.id);
-    if (error) { toast.error(error.message); return; }
+    db.requests.update(req.id, {
+      status, approval_note: approvalNote || null, approved_at: now(),
+    } as any);
 
-    // Write audit log
     if (user) {
       const itemDesc = req.items?.name ?? req.merek ?? "barang";
       await writeAuditLog(

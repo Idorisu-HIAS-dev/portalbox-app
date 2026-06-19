@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Send, Search, Paperclip, Image as ImageIcon, Film, Music, FileText, X } from "lucide-react";
 import { toast } from "sonner";
 
-import { supabase } from "@/integrations/supabase/client";
+import { db, genId, now } from "@/lib/mock-db";
 import { useAuth } from "@/hooks/use-auth";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -56,8 +56,7 @@ function ChatPage() {
     queryKey: ["chat-people", user?.id],
     enabled: !!user,
     queryFn: async () => {
-      const { data } = await supabase.from("profiles").select("id, full_name, updated_at").neq("id", user!.id);
-      return (data ?? []) as Profile[];
+      return [{ id: "admin", full_name: "Admin Utama", updated_at: now() }] as Profile[];
     },
   });
 
@@ -65,29 +64,27 @@ function ChatPage() {
     queryKey: ["chat-messages", user?.id, activeId],
     enabled: !!user && !!activeId,
     queryFn: async () => {
-      const { data } = await supabase.from("chat_messages")
-        .select("*")
-        .or(`and(sender_id.eq.${user!.id},recipient_id.eq.${activeId}),and(sender_id.eq.${activeId},recipient_id.eq.${user!.id})`)
-        .order("created_at", { ascending: true });
-      await supabase.from("chat_messages").update({ read: true })
-        .eq("sender_id", activeId!).eq("recipient_id", user!.id).eq("read", false);
-      return (data ?? []) as Msg[];
+      const allMsgs = db.chat_messages.getAll();
+      const filtered = allMsgs.filter(
+        (m) =>
+          (m.sender_id === user!.id && m.recipient_id === activeId) ||
+          (m.sender_id === activeId && m.recipient_id === user!.id)
+      ).sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+      for (const m of filtered) {
+        if (m.sender_id === activeId && m.recipient_id === user!.id && !m.read) {
+          db.chat_messages.update(m.id, { read: true });
+        }
+      }
+      return filtered as Msg[];
     },
   });
 
   useEffect(() => {
     if (!user || !activeId) return;
-    const ch = supabase.channel(`chat-${user.id}-${activeId}`)
-      .on("postgres_changes", {
-        event: "*",
-        schema: "public",
-        table: "chat_messages",
-        filter: `or(and(sender_id.eq.${user.id},recipient_id.eq.${activeId}),and(sender_id.eq.${activeId},recipient_id.eq.${user.id}))`,
-      }, () => {
-        qc.invalidateQueries({ queryKey: ["chat-messages", user.id, activeId] });
-      })
-      .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    const iv = setInterval(() => {
+      qc.invalidateQueries({ queryKey: ["chat-messages", user.id, activeId] });
+    }, 2000);
+    return () => clearInterval(iv);
   }, [user, activeId, qc]);
 
   useEffect(() => {
@@ -119,15 +116,7 @@ function ChatPage() {
   }
 
   async function uploadFile(file: File): Promise<string | null> {
-    const ext = file.name.split(".").pop() ?? "bin";
-    const fileName = `${user!.id}/${Date.now()}.${ext}`;
-    const { error } = await supabase.storage.from("chat-files").upload(fileName, file, { upsert: false });
-    if (error) {
-      toast.error("Gagal upload: " + error.message);
-      return null;
-    }
-    const { data } = supabase.storage.from("chat-files").getPublicUrl(fileName);
-    return data.publicUrl;
+    return URL.createObjectURL(file);
   }
 
   async function send() {
@@ -147,23 +136,28 @@ function ChatPage() {
       else content = `[file:${url}|${pendingFile.name}]`;
 
       setPendingFile(null);
-      const { error } = await supabase.from("chat_messages").insert({
-        sender_id: user.id, recipient_id: activeId, content,
+      db.chat_messages.insert({
+        id: genId(),
+        sender_id: user.id,
+        recipient_id: activeId,
+        content,
+        read: false,
+        created_at: now(),
       });
-      if (error) toast.error("Gagal mengirim: " + error.message);
       return;
     }
 
     if (!draft.trim()) return;
     const content = draft.trim();
     setDraft("");
-    const { error } = await supabase.from("chat_messages").insert({
-      sender_id: user.id, recipient_id: activeId, content,
+    db.chat_messages.insert({
+      id: genId(),
+      sender_id: user.id,
+      recipient_id: activeId,
+      content,
+      read: false,
+      created_at: now(),
     });
-    if (error) {
-      setDraft(content);
-      toast.error("Gagal mengirim pesan: " + error.message);
-    }
   }
 
   return (

@@ -9,6 +9,7 @@ import {
   PieChart, Pie, Cell, AreaChart, Area, LineChart, Line, Legend,
 } from "recharts";
 
+import { db } from "@/lib/mock-db";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -320,16 +321,26 @@ function MiniCard({ label, value, icon: Icon, tone }: {
 }
 
 async function loadStats() {
+  const items = db.items.getAll();
+  const stockIn = db.stock_in.getAll();
+  const stockOut = db.stock_out.getAll();
+  const requests = db.requests.getAll();
+  const now = new Date();
+  const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const inMonth = stockIn.filter((s) => s.trx_date.startsWith(thisMonth)).reduce((sum, s) => sum + s.qty, 0);
+  const outMonth = stockOut.filter((s) => s.trx_date.startsWith(thisMonth)).reduce((sum, s) => sum + s.qty, 0);
+  const pendingReq = requests.filter((r) => r.status === "menunggu").length;
+  const approvedReq = requests.filter((r) => r.status === "disetujui").length;
   return {
-    totalItems: 12,
-    totalStock: 213,
-    lowStock: 2,
-    outOfStock: 0,
-    inMonth: 213,
-    outMonth: 211,
-    pendingReq: 2,
-    approvedReq: 3,
-    totalReq: 5,
+    totalItems: items.length,
+    totalStock: items.reduce((sum, i) => sum + i.stock, 0),
+    lowStock: items.filter((i) => i.stock <= i.min_stock && i.stock > 0).length,
+    outOfStock: items.filter((i) => i.stock === 0).length,
+    inMonth,
+    outMonth,
+    pendingReq,
+    approvedReq,
+    totalReq: requests.length,
     totalUsers: 2,
     adminCount: 1,
     petugasCount: 1,
@@ -337,50 +348,60 @@ async function loadStats() {
 }
 
 async function loadChart() {
-  return [
-    { month: "Jan", masuk: 15, keluar: 10 },
-    { month: "Feb", masuk: 40, keluar: 20 },
-    { month: "Mar", masuk: 20, keluar: 15 },
-    { month: "Apr", masuk: 35, keluar: 30 },
-    { month: "Mei", masuk: 80, keluar: 60 },
-    { month: "Jun", masuk: 213, keluar: 211 },
-  ];
+  const stockIn = db.stock_in.getAll();
+  const stockOut = db.stock_out.getAll();
+  const months = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+  const now = new Date();
+  const result: { month: string; masuk: number; keluar: number }[] = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const masuk = stockIn.filter((s) => s.trx_date.startsWith(key)).reduce((sum, s) => sum + s.qty, 0);
+    const keluar = stockOut.filter((s) => s.trx_date.startsWith(key)).reduce((sum, s) => sum + s.qty, 0);
+    result.push({ month: months[d.getMonth()], masuk, keluar });
+  }
+  return result;
 }
 
 async function loadTopItems() {
-  return [
-    { id: "1", name: "Pulpen Pilot G2", unit: "pcs", stock: 35, qty: 15 },
-    { id: "2", name: "Kertas A4 70g", unit: "rim", stock: 20, qty: 5 },
-    { id: "3", name: "Keyboard Mechanical", unit: "pcs", stock: 12, qty: 3 },
-    { id: "4", name: "Spidol Whiteboard", unit: "set", stock: 10, qty: 8 },
-    { id: "5", name: "Headset Jabra Evolve2", unit: "unit", stock: 5, qty: 2 },
-  ];
+  const items = db.items.getAll();
+  const stockOut = db.stock_out.getAll();
+  const qtyMap: Record<string, number> = {};
+  for (const so of stockOut) {
+    qtyMap[so.item_id] = (qtyMap[so.item_id] || 0) + so.qty;
+  }
+  return items
+    .map((item) => ({ id: item.id, name: item.name, unit: item.unit, stock: item.stock, qty: qtyMap[item.id] || 0 }))
+    .filter((t) => t.qty > 0)
+    .sort((a, b) => b.qty - a.qty)
+    .slice(0, 5);
 }
 
 async function loadWeekly() {
-  return [
-    { day: "Sen", masuk: 0, keluar: 0 },
-    { day: "Sel", masuk: 0, keluar: 0 },
-    { day: "Rab", masuk: 0, keluar: 0 },
-    { day: "Kam", masuk: 0, keluar: 0 },
-    { day: "Jum", masuk: 0, keluar: 0 },
-    { day: "Sab", masuk: 55, keluar: 80 },
-    { day: "Min", masuk: 100, keluar: 90 },
-  ];
+  const stockIn = db.stock_in.getAll();
+  const stockOut = db.stock_out.getAll();
+  const days = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
+  const result: { day: string; masuk: number; keluar: number }[] = [];
+  const now = new Date();
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - i);
+    const dateStr = d.toISOString().slice(0, 10);
+    const dayName = days[d.getDay()];
+    const masuk = stockIn.filter((s) => s.trx_date === dateStr).reduce((sum, s) => sum + s.qty, 0);
+    const keluar = stockOut.filter((s) => s.trx_date === dateStr).reduce((sum, s) => sum + s.qty, 0);
+    result.push({ day: dayName, masuk, keluar });
+  }
+  return result;
 }
 
 async function loadOverviewDetail() {
-  return [
-    { name: "Laptop ASUS Vivobook", masuk: 5, keluar: 2, sisa: 3 },
-    { name: "Monitor LG 24 inch", masuk: 4, keluar: 2, sisa: 2 },
-    { name: "Pulpen Pilot G2", masuk: 30, keluar: 15, sisa: 15 },
-    { name: "Kertas A4 70g", masuk: 10, keluar: 5, sisa: 5 },
-    { name: "Keyboard Mechanical", masuk: 8, keluar: 3, sisa: 5 },
-    { name: "Mouse Logitech G102", masuk: 12, keluar: 0, sisa: 12 },
-    { name: "Meja Kerja Lipat", masuk: 3, keluar: 0, sisa: 3 },
-    { name: "Kursi Ergonomis", masuk: 5, keluar: 3, sisa: 2 },
-    { name: "Whiteboard 120x90cm", masuk: 2, keluar: 0, sisa: 2 },
-    { name: "Spidol Whiteboard", masuk: 0, keluar: 8, sisa: -8 },
-    { name: "Headset Jabra Evolve2", masuk: 3, keluar: 2, sisa: 1 },
-  ];
+  const items = db.items.getAll();
+  const stockIn = db.stock_in.getAll();
+  const stockOut = db.stock_out.getAll();
+  return items.map((item) => {
+    const masuk = stockIn.filter((s) => s.item_id === item.id).reduce((sum, s) => sum + s.qty, 0);
+    const keluar = stockOut.filter((s) => s.item_id === item.id).reduce((sum, s) => sum + s.qty, 0);
+    return { name: item.name, masuk, keluar, sisa: item.stock };
+  });
 }
