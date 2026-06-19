@@ -9,7 +9,6 @@ import {
   PieChart, Pie, Cell, AreaChart, Area, LineChart, Line, Legend,
 } from "recharts";
 
-import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -321,112 +320,67 @@ function MiniCard({ label, value, icon: Icon, tone }: {
 }
 
 async function loadStats() {
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10);
-
-  const [items, inMonth, outMonth, reqs, userProfiles, userRoles] = await Promise.all([
-    supabase.from("items").select("stock, min_stock"),
-    supabase.from("stock_in").select("qty").gte("trx_date", monthStart),
-    supabase.from("stock_out").select("qty").gte("trx_date", monthStart),
-    supabase.from("requests").select("status"),
-    supabase.from("profiles").select("id"),
-    supabase.from("user_roles").select("user_id, role"),
-  ]);
-  const list = items.data ?? [];
-  const reqList = reqs.data ?? [];
-  const roles = userRoles.data ?? [];
   return {
-    totalItems: list.length,
-    totalStock: list.reduce((s, x) => s + (x.stock ?? 0), 0),
-    lowStock: list.filter((x) => (x.stock ?? 0) > 0 && (x.stock ?? 0) <= (x.min_stock ?? 0)).length,
-    outOfStock: list.filter((x) => (x.stock ?? 0) === 0).length,
-    inMonth: (inMonth.data ?? []).reduce((s, x) => s + (x.qty ?? 0), 0),
-    outMonth: (outMonth.data ?? []).reduce((s, x) => s + (x.qty ?? 0), 0),
-    pendingReq: reqList.filter((r: any) => r.status === "menunggu").length,
-    approvedReq: reqList.filter((r: any) => r.status === "disetujui").length,
-    totalReq: reqList.length,
-    totalUsers: (userProfiles.data ?? []).length,
-    adminCount: roles.filter((r) => r.role === "admin").length,
-    petugasCount: roles.filter((r) => r.role === "petugas").length,
+    totalItems: 12,
+    totalStock: 213,
+    lowStock: 2,
+    outOfStock: 0,
+    inMonth: 213,
+    outMonth: 211,
+    pendingReq: 2,
+    approvedReq: 3,
+    totalReq: 5,
+    totalUsers: 2,
+    adminCount: 1,
+    petugasCount: 1,
   };
 }
 
 async function loadChart() {
-  const months: { month: string; key: string }[] = [];
-  const now = new Date();
-  for (let i = 5; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    months.push({
-      month: d.toLocaleDateString("id-ID", { month: "short" }),
-      key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`,
-    });
-  }
-  const start = new Date(now.getFullYear(), now.getMonth() - 5, 1).toISOString().slice(0, 10);
-  const [ins, outs] = await Promise.all([
-    supabase.from("stock_in").select("qty, trx_date").gte("trx_date", start),
-    supabase.from("stock_out").select("qty, trx_date").gte("trx_date", start),
-  ]);
-  return months.map((m) => ({
-    month: m.month,
-    masuk: (ins.data ?? []).filter((r) => r.trx_date.startsWith(m.key)).reduce((s, x) => s + (x.qty ?? 0), 0),
-    keluar: (outs.data ?? []).filter((r) => r.trx_date.startsWith(m.key)).reduce((s, x) => s + (x.qty ?? 0), 0),
-  }));
+  return [
+    { month: "Jan", masuk: 15, keluar: 10 },
+    { month: "Feb", masuk: 40, keluar: 20 },
+    { month: "Mar", masuk: 20, keluar: 15 },
+    { month: "Apr", masuk: 35, keluar: 30 },
+    { month: "Mei", masuk: 80, keluar: 60 },
+    { month: "Jun", masuk: 213, keluar: 211 },
+  ];
 }
 
 async function loadTopItems() {
-  const since = new Date(); since.setDate(since.getDate() - 30);
-  const { data } = await supabase.from("stock_out")
-    .select("qty, item_id, items(name, unit, stock)")
-    .gte("trx_date", since.toISOString().slice(0, 10));
-  const agg = new Map<string, { id: string; name: string; unit: string; stock: number; qty: number }>();
-  (data ?? []).forEach((r: any) => {
-    const cur = agg.get(r.item_id) ?? { id: r.item_id, name: r.items?.name ?? "—", unit: r.items?.unit ?? "", stock: r.items?.stock ?? 0, qty: 0 };
-    cur.qty += r.qty ?? 0;
-    agg.set(r.item_id, cur);
-  });
-  return Array.from(agg.values()).sort((a, b) => b.qty - a.qty).slice(0, 5);
+  return [
+    { id: "1", name: "Pulpen Pilot G2", unit: "pcs", stock: 35, qty: 15 },
+    { id: "2", name: "Kertas A4 70g", unit: "rim", stock: 20, qty: 5 },
+    { id: "3", name: "Keyboard Mechanical", unit: "pcs", stock: 12, qty: 3 },
+    { id: "4", name: "Spidol Whiteboard", unit: "set", stock: 10, qty: 8 },
+    { id: "5", name: "Headset Jabra Evolve2", unit: "unit", stock: 5, qty: 2 },
+  ];
 }
 
 async function loadWeekly() {
-  const days: { day: string; key: string }[] = [];
-  const now = new Date();
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date(now); d.setDate(now.getDate() - i);
-    days.push({ day: d.toLocaleDateString("id-ID", { weekday: "short" }), key: d.toISOString().slice(0, 10) });
-  }
-  const start = days[0].key;
-  const [ins, outs] = await Promise.all([
-    supabase.from("stock_in").select("qty, trx_date").gte("trx_date", start),
-    supabase.from("stock_out").select("qty, trx_date").gte("trx_date", start),
-  ]);
-  return days.map((d) => ({
-    day: d.day,
-    masuk: (ins.data ?? []).filter((r) => r.trx_date === d.key).reduce((s, x) => s + (x.qty ?? 0), 0),
-    keluar: (outs.data ?? []).filter((r) => r.trx_date === d.key).reduce((s, x) => s + (x.qty ?? 0), 0),
-  }));
+  return [
+    { day: "Sen", masuk: 0, keluar: 0 },
+    { day: "Sel", masuk: 0, keluar: 0 },
+    { day: "Rab", masuk: 0, keluar: 0 },
+    { day: "Kam", masuk: 0, keluar: 0 },
+    { day: "Jum", masuk: 0, keluar: 0 },
+    { day: "Sab", masuk: 55, keluar: 80 },
+    { day: "Min", masuk: 100, keluar: 90 },
+  ];
 }
 
 async function loadOverviewDetail() {
-  const now = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth() - 5, 1).toISOString().slice(0, 10);
-  const [ins, outs] = await Promise.all([
-    supabase.from("stock_in").select("qty, item_id, items(name)").gte("trx_date", start),
-    supabase.from("stock_out").select("qty, item_id, items(name)").gte("trx_date", start),
-  ]);
-  const agg = new Map<string, { name: string; masuk: number; keluar: number }>();
-  (ins.data ?? []).forEach((r: any) => {
-    const name = r.items?.name ?? "—";
-    const cur = agg.get(name) ?? { name, masuk: 0, keluar: 0 };
-    cur.masuk += r.qty ?? 0;
-    agg.set(name, cur);
-  });
-  (outs.data ?? []).forEach((r: any) => {
-    const name = r.items?.name ?? "—";
-    const cur = agg.get(name) ?? { name, masuk: 0, keluar: 0 };
-    cur.keluar += r.qty ?? 0;
-    agg.set(name, cur);
-  });
-  return Array.from(agg.values())
-    .map((item) => ({ ...item, sisa: item.masuk - item.keluar }))
-    .sort((a, b) => (b.masuk + b.keluar) - (a.masuk + a.keluar));
+  return [
+    { name: "Laptop ASUS Vivobook", masuk: 5, keluar: 2, sisa: 3 },
+    { name: "Monitor LG 24 inch", masuk: 4, keluar: 2, sisa: 2 },
+    { name: "Pulpen Pilot G2", masuk: 30, keluar: 15, sisa: 15 },
+    { name: "Kertas A4 70g", masuk: 10, keluar: 5, sisa: 5 },
+    { name: "Keyboard Mechanical", masuk: 8, keluar: 3, sisa: 5 },
+    { name: "Mouse Logitech G102", masuk: 12, keluar: 0, sisa: 12 },
+    { name: "Meja Kerja Lipat", masuk: 3, keluar: 0, sisa: 3 },
+    { name: "Kursi Ergonomis", masuk: 5, keluar: 3, sisa: 2 },
+    { name: "Whiteboard 120x90cm", masuk: 2, keluar: 0, sisa: 2 },
+    { name: "Spidol Whiteboard", masuk: 0, keluar: 8, sisa: -8 },
+    { name: "Headset Jabra Evolve2", masuk: 3, keluar: 2, sisa: 1 },
+  ];
 }

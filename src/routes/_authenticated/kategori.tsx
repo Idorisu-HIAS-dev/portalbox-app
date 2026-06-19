@@ -28,6 +28,15 @@ export const Route = createFileRoute("/_authenticated/kategori")({
 
 type Cat = { id: string; name: string; description: string | null };
 
+const MOCK_CATEGORIES: Cat[] = [
+  { id: "1", name: "Elektronik", description: "Peralatan elektronik kantor" },
+  { id: "2", name: "Furniture", description: "Meja, kursi, lemari, dll" },
+  { id: "3", name: "Alat Tulis", description: "Pensil, pulpen, kertas, dll" },
+  { id: "4", name: "ATK Khusus", description: "Peralatan presentasi & rapat" },
+  { id: "5", name: "Komputer & Aksesoris", description: "PC, laptop, printer, dll" },
+  { id: "6", name: "Kebersihan", description: "Peralatan kebersihan kantor" },
+];
+
 function CategoriesPage() {
   const { role } = useAuth();
   const isAdmin = role === "admin";
@@ -39,7 +48,7 @@ function CategoriesPage() {
 
   const { data: cats = [] } = useQuery({
     queryKey: ["categories"],
-    queryFn: async () => (await supabase.from("categories").select("*").order("name")).data as Cat[],
+    queryFn: async () => MOCK_CATEGORIES as Cat[],
   });
 
   async function save(e: React.FormEvent) {

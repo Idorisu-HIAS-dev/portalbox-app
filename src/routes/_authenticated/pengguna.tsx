@@ -21,6 +21,11 @@ export const Route = createFileRoute("/_authenticated/pengguna")({
 
 type Row = { id: string; full_name: string | null; avatar_url: string | null; role: "admin" | "petugas" | null; created_at: string };
 
+const MOCK_USERS: Row[] = [
+  { id: "admin-001", full_name: "Admin Utama", avatar_url: null, role: "admin", created_at: "2026-01-01" },
+  { id: "petugas-001", full_name: "Petugas Gudang", avatar_url: null, role: "petugas", created_at: "2026-01-15" },
+];
+
 function UsersPage() {
   const { role: myRole, user: me } = useAuth();
   const isAdmin = myRole === "admin";
@@ -29,14 +34,7 @@ function UsersPage() {
 
   const { data: rows = [] } = useQuery({
     queryKey: ["users"],
-    queryFn: async () => {
-      const [{ data: profiles }, { data: roles }] = await Promise.all([
-        supabase.from("profiles").select("id, full_name, avatar_url, created_at"),
-        supabase.from("user_roles").select("user_id, role"),
-      ]);
-      const map = new Map((roles ?? []).map((r) => [r.user_id, r.role]));
-      return (profiles ?? []).map((p) => ({ ...p, role: (map.get(p.id) as Row["role"]) ?? null })) as Row[];
-    },
+    queryFn: async () => MOCK_USERS as Row[],
   });
 
   async function changeRole(userId: string, newRole: "admin" | "petugas") {

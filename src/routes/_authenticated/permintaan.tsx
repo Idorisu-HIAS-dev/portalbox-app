@@ -37,6 +37,29 @@ const EKSPEDISI_OPSI = [
   "Pos Indonesia", "TIKI", "Ninja Xpress", "Lion Parcel", "Wahana Express", "SAP Express", "Lainnya",
 ];
 
+const MOCK_REQUESTS = [
+  { id: "1", item_id: "1", qty: 2, requester_id: "admin", note: "Butuh laptop untuk tim baru", status: "menunggu" as const, kategori: "Elektronik", merek: "ASUS", ekspedisi: "JNE", created_at: "2026-06-10", items: { name: "Laptop ASUS Vivobook 14", unit: "unit" }, requester: { full_name: "Admin Utama" }, approval_note: null, kategori_lain: null, ekspedisi_lain: null },
+  { id: "2", item_id: "5", qty: 3, requester_id: "admin", note: "Meja untuk ruang baru", status: "disetujui" as const, kategori: "Furniture", merek: "Olympic", ekspedisi: "J&T", created_at: "2026-06-11", items: { name: "Meja Kerja Lipat", unit: "unit" }, requester: { full_name: "Admin Utama" }, approval_note: null, kategori_lain: null, ekspedisi_lain: null },
+  { id: "3", item_id: "8", qty: 5, requester_id: "admin", note: "Kertas untuk cetak laporan", status: "disetujui" as const, kategori: "Alat Tulis", merek: "Sinar Dunia", ekspedisi: "SiCepat", created_at: "2026-06-12", items: { name: "Kertas A4 70g", unit: "rim" }, requester: { full_name: "Admin Utama" }, approval_note: null, kategori_lain: null, ekspedisi_lain: null },
+  { id: "4", item_id: "11", qty: 1, requester_id: "admin", note: "Headset untuk wfh", status: "ditolak" as const, kategori: "Elektronik", merek: "Jabra", ekspedisi: "Grab", created_at: "2026-06-13", items: { name: "Headset Jabra Evolve2", unit: "unit" }, requester: { full_name: "Admin Utama" }, approval_note: null, kategori_lain: null, ekspedisi_lain: null },
+  { id: "5", item_id: null, qty: 10, requester_id: "admin", note: "Permintaan ATK umum", status: "menunggu" as const, kategori: "Alat Tulis", merek: null, ekspedisi: "GoSend", created_at: "2026-06-15", items: null, requester: { full_name: "Admin Utama" }, approval_note: null, kategori_lain: null, ekspedisi_lain: null },
+];
+
+const MOCK_ITEMS_MIN = [
+  { id: "1", name: "Laptop ASUS Vivobook 14", stock: 12, unit: "unit" },
+  { id: "2", name: "Monitor LG 24 inch", stock: 8, unit: "unit" },
+  { id: "3", name: "Keyboard Mechanical Logitech", stock: 15, unit: "pcs" },
+  { id: "4", name: "Mouse Logitech G102", stock: 20, unit: "pcs" },
+  { id: "5", name: "Meja Kerja Lipat", stock: 6, unit: "unit" },
+  { id: "6", name: "Kursi Ergonomis", stock: 10, unit: "unit" },
+  { id: "7", name: "Pulpen Pilot G2", stock: 50, unit: "pcs" },
+  { id: "8", name: "Kertas A4 70g (rim)", stock: 25, unit: "rim" },
+  { id: "9", name: "Whiteboard 120x90cm", stock: 4, unit: "unit" },
+  { id: "10", name: "Spidol Whiteboard (set)", stock: 18, unit: "set" },
+  { id: "11", name: "Headset Jabra Evolve2", stock: 7, unit: "unit" },
+  { id: "12", name: "Pembersih Lantai (galon)", stock: 3, unit: "galon" },
+];
+
 type Req = {
   id: string; qty: number; status: "menunggu" | "disetujui" | "ditolak";
   note: string | null; created_at: string; requester_id: string; approval_note: string | null;
@@ -73,24 +96,12 @@ function RequestsPage() {
 
   const { data: reqs = [] } = useQuery({
     queryKey: ["requests"],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("requests")
-        .select("*, items(name, unit)")
-        .order("created_at", { ascending: false });
-      const list = (data ?? []) as any[];
-      const ids = Array.from(new Set(list.map((r) => r.requester_id)));
-      const { data: profs } = ids.length
-        ? await supabase.from("profiles").select("id, full_name").in("id", ids)
-        : { data: [] as any[] };
-      const map = new Map((profs ?? []).map((p: any) => [p.id, p.full_name]));
-      return list.map((r) => ({ ...r, requester: { full_name: map.get(r.requester_id) ?? null } })) as Req[];
-    },
+    queryFn: async () => MOCK_REQUESTS as Req[],
   });
 
   const { data: items = [] } = useQuery({
     queryKey: ["items-min"],
-    queryFn: async () => (await supabase.from("items").select("id, name, stock, unit").order("name")).data ?? [],
+    queryFn: async () => MOCK_ITEMS_MIN as any[],
   });
 
   function validateForm() {

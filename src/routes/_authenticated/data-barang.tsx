@@ -53,6 +53,54 @@ const schema = z.object({
   description: z.string().max(500).optional(),
 });
 
+const MOCK_CATEGORIES: Cat[] = [
+  { id: "1", name: "Elektronik", description: "Peralatan elektronik kantor" },
+  { id: "2", name: "Furniture", description: "Meja, kursi, lemari, dll" },
+  { id: "3", name: "Alat Tulis", description: "Pensil, pulpen, kertas, dll" },
+  { id: "4", name: "ATK Khusus", description: "Peralatan presentasi & rapat" },
+  { id: "5", name: "Komputer & Aksesoris", description: "PC, laptop, printer, dll" },
+  { id: "6", name: "Kebersihan", description: "Peralatan kebersihan kantor" },
+];
+
+const MOCK_ITEMS = [
+  { id: "1", code: "BRG-00001", name: "Laptop ASUS Vivobook 14", category_id: "5", stock: 12, min_stock: 3, unit: "unit", description: "Laptop 14 inch RAM 16GB", categories: { name: "Komputer & Aksesoris" }, photo_url: null, created_at: "2026-01-10" },
+  { id: "2", code: "BRG-00002", name: "Monitor LG 24 inch", category_id: "5", stock: 8, min_stock: 2, unit: "unit", description: "Monitor LED IPS FHD", categories: { name: "Komputer & Aksesoris" }, photo_url: null, created_at: "2026-01-10" },
+  { id: "3", code: "BRG-00003", name: "Keyboard Mechanical Logitech", category_id: "5", stock: 15, min_stock: 5, unit: "pcs", description: "Keyboard wireless", categories: { name: "Komputer & Aksesoris" }, photo_url: null, created_at: "2026-01-15" },
+  { id: "4", code: "BRG-00004", name: "Mouse Logitech G102", category_id: "5", stock: 20, min_stock: 5, unit: "pcs", description: "Mouse gaming", categories: { name: "Komputer & Aksesoris" }, photo_url: null, created_at: "2026-01-15" },
+  { id: "5", code: "BRG-00005", name: "Meja Kerja Lipat", category_id: "2", stock: 6, min_stock: 2, unit: "unit", description: "Meja lipat portable", categories: { name: "Furniture" }, photo_url: null, created_at: "2026-02-01" },
+  { id: "6", code: "BRG-00006", name: "Kursi Ergonomis", category_id: "2", stock: 10, min_stock: 3, unit: "unit", description: "Kursi kantor", categories: { name: "Furniture" }, photo_url: null, created_at: "2026-02-01" },
+  { id: "7", code: "BRG-00007", name: "Pulpen Pilot G2", category_id: "3", stock: 50, min_stock: 10, unit: "pcs", description: "Pulpen gel 0.7mm", categories: { name: "Alat Tulis" }, photo_url: null, created_at: "2026-03-01" },
+  { id: "8", code: "BRG-00008", name: "Kertas A4 70g (rim)", category_id: "3", stock: 25, min_stock: 5, unit: "rim", description: "Kertas A4 500 lembar", categories: { name: "Alat Tulis" }, photo_url: null, created_at: "2026-03-01" },
+  { id: "9", code: "BRG-00009", name: "Whiteboard 120x90cm", category_id: "4", stock: 4, min_stock: 1, unit: "unit", description: "Papan tulis magnetik", categories: { name: "ATK Khusus" }, photo_url: null, created_at: "2026-04-01" },
+  { id: "10", code: "BRG-00010", name: "Spidol Whiteboard (set)", category_id: "4", stock: 18, min_stock: 5, unit: "set", description: "Set 6 warna", categories: { name: "ATK Khusus" }, photo_url: null, created_at: "2026-04-01" },
+  { id: "11", code: "BRG-00011", name: "Headset Jabra Evolve2", category_id: "1", stock: 7, min_stock: 2, unit: "unit", description: "Headset BT", categories: { name: "Elektronik" }, photo_url: null, created_at: "2026-05-01" },
+  { id: "12", code: "BRG-00012", name: "Pembersih Lantai (galon)", category_id: "6", stock: 3, min_stock: 1, unit: "galon", description: "Cairan 5L", categories: { name: "Kebersihan" }, photo_url: null, created_at: "2026-05-01" },
+];
+
+const MOCK_TRX_IN = [
+  { id: "1", item_id: "1", qty: 5, source: "PT Maju Jaya", note: "Pengadaan Q1 2026", trx_date: "2026-01-15", created_by: "admin", created_at: "2026-01-15", items: { name: "Laptop ASUS Vivobook 14", unit: "unit" } },
+  { id: "2", item_id: "2", qty: 4, source: "PT Maju Jaya", note: "Pengadaan Q1 2026", trx_date: "2026-01-15", created_by: "admin", created_at: "2026-01-15", items: { name: "Monitor LG 24 inch", unit: "unit" } },
+  { id: "3", item_id: "7", qty: 30, source: "Toko ATK Pusat", note: "Restock bulanan", trx_date: "2026-02-01", created_by: "admin", created_at: "2026-02-01", items: { name: "Pulpen Pilot G2", unit: "pcs" } },
+  { id: "4", item_id: "8", qty: 10, source: "Toko ATK Pusat", note: "Restock bulanan", trx_date: "2026-02-01", created_by: "admin", created_at: "2026-02-01", items: { name: "Kertas A4 70g (rim)", unit: "rim" } },
+  { id: "5", item_id: "3", qty: 8, source: "Distributor IT", note: "Keyboard wireless baru", trx_date: "2026-03-10", created_by: "admin", created_at: "2026-03-10", items: { name: "Keyboard Mechanical Logitech", unit: "pcs" } },
+  { id: "6", item_id: "4", qty: 12, source: "Distributor IT", note: "Mouse gaming stok", trx_date: "2026-03-10", created_by: "admin", created_at: "2026-03-10", items: { name: "Mouse Logitech G102", unit: "pcs" } },
+  { id: "7", item_id: "5", qty: 3, source: "Furniture Indo", note: "Meja kerja lipat", trx_date: "2026-04-05", created_by: "admin", created_at: "2026-04-05", items: { name: "Meja Kerja Lipat", unit: "unit" } },
+  { id: "8", item_id: "6", qty: 5, source: "Furniture Indo", note: "Kursi ergonomis", trx_date: "2026-04-05", created_by: "admin", created_at: "2026-04-05", items: { name: "Kursi Ergonomis", unit: "unit" } },
+  { id: "9", item_id: "9", qty: 2, source: "Toko Office", note: "Whiteboard rapat", trx_date: "2026-05-20", created_by: "admin", created_at: "2026-05-20", items: { name: "Whiteboard 120x90cm", unit: "unit" } },
+  { id: "10", item_id: "11", qty: 3, source: "PT Maju Jaya", note: "Headset tim support", trx_date: "2026-06-01", created_by: "admin", created_at: "2026-06-01", items: { name: "Headset Jabra Evolve2", unit: "unit" } },
+];
+
+const MOCK_TRX_OUT = [
+  { id: "1", item_id: "1", qty: 2, destination: "Ruang Dev", note: "Tim dev", trx_date: "2026-01-20", created_by: "admin", created_at: "2026-01-20", items: { name: "Laptop ASUS Vivobook 14", unit: "unit" } },
+  { id: "2", item_id: "2", qty: 2, destination: "Ruang Dev", note: "Monitor ganda", trx_date: "2026-01-20", created_by: "admin", created_at: "2026-01-20", items: { name: "Monitor LG 24 inch", unit: "unit" } },
+  { id: "3", item_id: "7", qty: 15, destination: "Front Desk", note: "CS & admin", trx_date: "2026-02-10", created_by: "admin", created_at: "2026-02-10", items: { name: "Pulpen Pilot G2", unit: "pcs" } },
+  { id: "4", item_id: "8", qty: 5, destination: "Ruang Rapat", note: "Meeting", trx_date: "2026-03-01", created_by: "admin", created_at: "2026-03-01", items: { name: "Kertas A4 70g (rim)", unit: "rim" } },
+  { id: "5", item_id: "3", qty: 3, destination: "Ruang Kerja", note: "Tim QA", trx_date: "2026-03-15", created_by: "admin", created_at: "2026-03-15", items: { name: "Keyboard Mechanical Logitech", unit: "pcs" } },
+  { id: "6", item_id: "6", qty: 3, destination: "Ruang Tamu", note: "Kursi tamu", trx_date: "2026-04-10", created_by: "admin", created_at: "2026-04-10", items: { name: "Kursi Ergonomis", unit: "unit" } },
+  { id: "7", item_id: "10", qty: 8, destination: "Ruang Meeting", note: "Spidol rapat", trx_date: "2026-05-15", created_by: "admin", created_at: "2026-05-15", items: { name: "Spidol Whiteboard (set)", unit: "set" } },
+  { id: "8", item_id: "11", qty: 2, destination: "Ruang Support", note: "Helpdesk", trx_date: "2026-06-05", created_by: "admin", created_at: "2026-06-05", items: { name: "Headset Jabra Evolve2", unit: "unit" } },
+];
+
 function ItemsPage() {
   const { role, user } = useAuth();
   const { settings } = useAppSettings();
@@ -73,22 +121,21 @@ function ItemsPage() {
   const { data: items = [] } = useQuery({
     queryKey: ["items"],
     queryFn: async () => {
-      const { data } = await supabase.from("items").select("*, categories(name)").order("created_at", { ascending: false });
-      return (data ?? []) as Item[];
+      return MOCK_ITEMS as Item[];
     },
   });
   const { data: categories = [] } = useQuery({
     queryKey: ["categories"],
-    queryFn: async () => (await supabase.from("categories").select("*").order("name")).data ?? [],
+    queryFn: async () => MOCK_CATEGORIES as Cat[],
   });
 
   const { data: trxIn = [] } = useQuery({
     queryKey: ["stock-in"],
-    queryFn: async () => (await supabase.from("stock_in").select("*, items(name)").order("trx_date", { ascending: false }).limit(200)).data ?? [],
+    queryFn: async () => MOCK_TRX_IN as any[],
   });
   const { data: trxOut = [] } = useQuery({
     queryKey: ["stock-out"],
-    queryFn: async () => (await supabase.from("stock_out").select("*, items(name)").order("trx_date", { ascending: false }).limit(200)).data ?? [],
+    queryFn: async () => MOCK_TRX_OUT as any[],
   });
 
   // Item delete

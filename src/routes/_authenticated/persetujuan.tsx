@@ -23,6 +23,14 @@ export const Route = createFileRoute("/_authenticated/persetujuan")({
   component: ApprovalsPage,
 });
 
+const MOCK_REQUESTS = [
+  { id: "1", item_id: "1", qty: 2, requester_id: "admin", note: "Butuh laptop untuk tim baru", status: "menunggu" as const, kategori: "Elektronik", merek: "ASUS", ekspedisi: "JNE", created_at: "2026-06-10", items: { name: "Laptop ASUS Vivobook 14", unit: "unit", stock: 12 }, requester: { full_name: "Admin Utama" }, approval_note: null },
+  { id: "2", item_id: "5", qty: 3, requester_id: "admin", note: "Meja untuk ruang baru", status: "disetujui" as const, kategori: "Furniture", merek: "Olympic", ekspedisi: "J&T", created_at: "2026-06-11", items: { name: "Meja Kerja Lipat", unit: "unit", stock: 6 }, requester: { full_name: "Admin Utama" }, approval_note: null },
+  { id: "3", item_id: "8", qty: 5, requester_id: "admin", note: "Kertas untuk cetak laporan", status: "disetujui" as const, kategori: "Alat Tulis", merek: "Sinar Dunia", ekspedisi: "SiCepat", created_at: "2026-06-12", items: { name: "Kertas A4 70g", unit: "rim", stock: 25 }, requester: { full_name: "Admin Utama" }, approval_note: null },
+  { id: "4", item_id: "11", qty: 1, requester_id: "admin", note: "Headset untuk wfh", status: "ditolak" as const, kategori: "Elektronik", merek: "Jabra", ekspedisi: "Grab", created_at: "2026-06-13", items: { name: "Headset Jabra Evolve2", unit: "unit", stock: 7 }, requester: { full_name: "Admin Utama" }, approval_note: null },
+  { id: "5", item_id: null, qty: 10, requester_id: "admin", note: "Permintaan ATK umum", status: "menunggu" as const, kategori: "Alat Tulis", merek: null, ekspedisi: "GoSend", created_at: "2026-06-15", items: null, requester: { full_name: "Admin Utama" }, approval_note: null },
+];
+
 type Req = {
   id: string; item_id: string | null; qty: number; status: "menunggu" | "disetujui" | "ditolak";
   note: string | null; created_at: string; approval_note: string | null;
@@ -41,19 +49,7 @@ function ApprovalsPage() {
 
   const { data: reqs = [] } = useQuery({
     queryKey: ["requests-all"],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("requests")
-        .select("*, items(name, unit, stock)")
-        .order("created_at", { ascending: false });
-      const list = (data ?? []) as any[];
-      const ids = Array.from(new Set(list.map((r) => r.requester_id)));
-      const { data: profs } = ids.length
-        ? await supabase.from("profiles").select("id, full_name").in("id", ids)
-        : { data: [] as any[] };
-      const map = new Map((profs ?? []).map((p: any) => [p.id, p.full_name]));
-      return list.map((r) => ({ ...r, requester: { full_name: map.get(r.requester_id) ?? null } })) as Req[];
-    },
+    queryFn: async () => MOCK_REQUESTS as Req[],
   });
 
   async function submitDecision() {
